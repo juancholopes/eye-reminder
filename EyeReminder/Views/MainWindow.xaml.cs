@@ -14,6 +14,9 @@ public sealed partial class MainWindow : Window
     // Ancho de diseño del contenido (ver ContentPanel en el XAML); el Viewbox lo escala a partir de este ancho.
     private const double DesignWidth = 440;
 
+    // Escala máxima del contenido; debe coincidir con el MaxWidth del Viewbox (DesignWidth x MaxZoom).
+    private const double MaxZoom = 1.5;
+
     // Alto del contenido (tarjeta + botones) a su escala natural, sin la barra de título.
     // Cambia al aparecer el botón "Omitir este descanso", por eso se recalcula en FitHeightToContent.
     private double _contentHeight = 340;
@@ -63,7 +66,7 @@ public sealed partial class MainWindow : Window
         var scale = NativeMethods.GetDpiForWindow(hwnd) / 96.0;
 
         // Se conserva la proporción: el alto deseado sale del ancho actual y del factor con que el Viewbox escala.
-        var zoom = AppWindow.ClientSize.Width / scale / DesignWidth;
+        var zoom = Math.Min(AppWindow.ClientSize.Width / scale / DesignWidth, MaxZoom);
         var targetHeight = (int)Math.Ceiling((AppTitleBar.Height + _contentHeight * zoom) * scale);
 
         // Resize recibe el tamaño exterior: se suma la diferencia entre el alto de cliente deseado y el actual.
