@@ -48,3 +48,5 @@ dotnet run --project EyeReminder -- --demo
 - Al bloquear Windows (Win+L) el conteo se detiene y cualquier descanso en curso se descarta; al
   desbloquear empiezan de nuevo los 20 minutos completos (si estaba en pausa, sigue en pausa).
 - El notch usa los colores de WinUI 3 y cambia con el modo claro u oscuro de Windows.
+- El icono sale de los SVG de `design/icon` (estilo Fluent; la versión sin insignia es para la
+  bandeja). Para regenerar `EyeReminder/Assets/EyeReminder.ico`: `uv run scripts/build-icon.py`.
