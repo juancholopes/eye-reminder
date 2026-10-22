@@ -1,5 +1,6 @@
 using EyeReminder.Interop;
 using EyeReminder.ViewModels;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using WinRT.Interop;
 
@@ -10,9 +11,12 @@ public sealed partial class MainWindow : Window
     // Ancho mínimo (en píxeles independientes del DPI) con el que el contenido se ve completo.
     private const int MinWidth = 400;
 
-    // Alto del contenido (título + tarjeta + botones); la ventana no baja de aquí, así no sobra espacio debajo.
+    // Ancho de diseño del contenido (ver ContentPanel en el XAML); el Viewbox lo escala a partir de este ancho.
+    private const double DesignWidth = 440;
+
+    // Alto del contenido (tarjeta + botones) a su escala natural, sin la barra de título.
     // Cambia al aparecer el botón "Omitir este descanso", por eso se recalcula en FitHeightToContent.
-    private double _contentHeight = 380;
+    private double _contentHeight = 340;
 
     // Id distinto al del subclase de TrayIcon, que usa la misma ventana. El campo evita que el GC libere el delegado.
     private static readonly UIntPtr MinSizeSubclassId = new(1);
@@ -31,7 +35,7 @@ public sealed partial class MainWindow : Window
         NativeMethods.SetWindowSubclass(hwnd, _minSizeProc, MinSizeSubclassId, UIntPtr.Zero);
 
         var scale = NativeMethods.GetDpiForWindow(hwnd) / 96.0;
-        AppWindow.Resize(new Windows.Graphics.SizeInt32((int)(440 * scale), (int)(_contentHeight * scale)));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32((int)(DesignWidth * scale), (int)((AppTitleBar.Height + _contentHeight) * scale)));
 
         // Con el layout ya hecho se mide el contenido real y se ajusta el alto de la ventana.
         ContentPanel.Loaded += (_, _) => FitHeightToContent();
@@ -48,14 +52,22 @@ public sealed partial class MainWindow : Window
 
     private void FitHeightToContent()
     {
+        ContentPanel.Measure(new Windows.Foundation.Size(DesignWidth, double.PositiveInfinity));
+        _contentHeight = ContentPanel.DesiredSize.Height;
+
+        // Maximizada o en pantalla completa el tamaño no es nuestro: el Viewbox ya escala y centra el contenido.
+        if (AppWindow.Presenter is not OverlappedPresenter { State: OverlappedPresenterState.Restored })
+            return;
+
         var hwnd = WindowNative.GetWindowHandle(this);
         var scale = NativeMethods.GetDpiForWindow(hwnd) / 96.0;
 
-        ContentPanel.Measure(new Windows.Foundation.Size(AppWindow.ClientSize.Width / scale, double.PositiveInfinity));
-        _contentHeight = AppTitleBar.Height + ContentPanel.DesiredSize.Height;
+        // Se conserva la proporción: el alto deseado sale del ancho actual y del factor con que el Viewbox escala.
+        var zoom = AppWindow.ClientSize.Width / scale / DesignWidth;
+        var targetHeight = (int)Math.Ceiling((AppTitleBar.Height + _contentHeight * zoom) * scale);
 
         // Resize recibe el tamaño exterior: se suma la diferencia entre el alto de cliente deseado y el actual.
-        var delta = (int)Math.Ceiling(_contentHeight * scale) - AppWindow.ClientSize.Height;
+        var delta = targetHeight - AppWindow.ClientSize.Height;
         AppWindow.Resize(new Windows.Graphics.SizeInt32(AppWindow.Size.Width, AppWindow.Size.Height + delta));
     }
 
@@ -66,7 +78,8 @@ public sealed partial class MainWindow : Window
             var scale = NativeMethods.GetDpiForWindow(hwnd) / 96.0;
             var info = System.Runtime.InteropServices.Marshal.PtrToStructure<NativeMethods.MINMAXINFO>(lParam);
             info.ptMinTrackSize.X = (int)(MinWidth * scale);
-            info.ptMinTrackSize.Y = (int)(_contentHeight * scale) + (AppWindow.Size.Height - AppWindow.ClientSize.Height);
+            info.ptMinTrackSize.Y = (int)((AppTitleBar.Height + _contentHeight * MinWidth / DesignWidth) * scale)
+                                    + (AppWindow.Size.Height - AppWindow.ClientSize.Height);
             System.Runtime.InteropServices.Marshal.StructureToPtr(info, lParam, false);
             return IntPtr.Zero;
         }
