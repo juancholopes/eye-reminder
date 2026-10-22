@@ -15,6 +15,9 @@ public sealed partial class MainViewModel : ObservableObject
     // Indica si el usuario quiere que el ciclo siga después de cada descanso.
     private bool _wantsRunning;
 
+    // Indica si la sesión de Windows está bloqueada.
+    private bool _isLocked;
+
     public MainViewModel(IReminderScheduler scheduler, IslandViewModel island, ReminderSettings settings)
     {
         _scheduler = scheduler;
@@ -116,9 +119,43 @@ public sealed partial class MainViewModel : ObservableObject
         EndBreak();
     }
 
+    /// <summary>
+    /// Con la sesión bloqueada no hay nadie frente a la pantalla: el tiempo no cuenta.
+    /// Si había un descanso en curso se descarta sin contarlo como completado.
+    /// </summary>
+    public void SuspendForLock()
+    {
+        _isLocked = true;
+        if (IsOnBreak)
+        {
+            _island.Cancel();
+            IsOnBreak = false;
+        }
+
+        _scheduler.Pause();
+        IsRunning = false;
+    }
+
+    /// <summary>Al desbloquear los 20 minutos empiezan desde cero, salvo que el usuario lo haya pausado.</summary>
+    public void ResumeAfterUnlock()
+    {
+        if (!_isLocked)
+        {
+            return;
+        }
+
+        _isLocked = false;
+        RestartCycle();
+    }
+
     private void EndBreak()
     {
         IsOnBreak = false;
+        RestartCycle();
+    }
+
+    private void RestartCycle()
+    {
         _scheduler.Reset();
         if (_wantsRunning)
         {

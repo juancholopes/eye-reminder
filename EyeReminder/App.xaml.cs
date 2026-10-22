@@ -4,6 +4,7 @@ using EyeReminder.ViewModels;
 using EyeReminder.Views;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using WinRT.Interop;
 
 namespace EyeReminder;
 
@@ -13,6 +14,7 @@ public partial class App : Application
     private IslandWindow? _islandWindow;
     private TrayIcon? _trayIcon;
     private MouseActivityService? _mouseMonitor;
+    private SessionLockService? _sessionLock;
     private bool _isExiting;
 
     public App()
@@ -41,6 +43,11 @@ public partial class App : Application
         _mainWindow.AppWindow.SetIcon(iconPath);
         _trayIcon = new TrayIcon(_mainWindow, mainViewModel, iconPath, ExitApp);
 
+        // El tiempo con el equipo bloqueado no cuenta: al desbloquear se empieza un ciclo nuevo.
+        _sessionLock = new SessionLockService(WindowNative.GetWindowHandle(_mainWindow));
+        _sessionLock.Locked += (_, _) => mainViewModel.SuspendForLock();
+        _sessionLock.Unlocked += (_, _) => mainViewModel.ResumeAfterUnlock();
+
         // Cerrar la ventana solo la oculta: la app sigue en la bandeja del sistema.
         _mainWindow.AppWindow.Closing += (sender, e) =>
         {
@@ -62,6 +69,7 @@ public partial class App : Application
     {
         _isExiting = true;
         _trayIcon?.Dispose();
+        _sessionLock?.Dispose();
         _mouseMonitor?.Stop();
         _islandWindow?.Close();
         _mainWindow?.Close();

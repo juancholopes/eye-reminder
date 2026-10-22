@@ -31,7 +31,7 @@ dotnet run --project EyeReminder -- --demo
 | Capa | Archivos | Responsabilidad |
 |---|---|---|
 | Model | `Models/ReminderSettings.cs` | Parámetros de la regla (intervalo, duración, distancia). |
-| Services | `Services/ReminderScheduler.cs`, `Services/MouseActivityService.cs` | Temporizador de 20 min y detección global de movimiento del mouse. |
+| Services | `Services/ReminderScheduler.cs`, `Services/MouseActivityService.cs`, `Services/SessionLockService.cs` | Temporizador de 20 min, detección global de movimiento del mouse y bloqueo/desbloqueo de la sesión. |
 | ViewModels | `ViewModels/MainViewModel.cs`, `ViewModels/IslandViewModel.cs` | Ciclo trabajo → descanso y cuenta de 20 s que se reinicia con el mouse. |
 | Views | `Views/MainWindow.xaml`, `Views/IslandWindow.xaml` | Ventana principal y notch siempre visible (sin foco, fuera de Alt+Tab). |
 | Interop | `Interop/NativeMethods.cs` | Win32: posición del cursor, forma del notch, ventana *topmost*. |
@@ -45,4 +45,6 @@ dotnet run --project EyeReminder -- --demo
   pero no puede dibujarse sobre juegos en pantalla completa exclusiva.
 - Cerrar la ventana principal solo la oculta: la app sigue en la bandeja del sistema. Clic en el
   icono para abrirla; clic derecho para Pausar/Reanudar, Descansar ahora o Salir.
+- Al bloquear Windows (Win+L) el conteo se detiene y cualquier descanso en curso se descarta; al
+  desbloquear empiezan de nuevo los 20 minutos completos (si estaba en pausa, sigue en pausa).
 - El notch usa los colores de WinUI 3 y cambia con el modo claro u oscuro de Windows.
